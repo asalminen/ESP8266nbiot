@@ -4,6 +4,7 @@
 //                rx to ESP D8 (tx)
 
 int8_t pollModem = 1;
+uint32 millisTime = 0;
 SoftwareSerial modem( D7, D8 );
 
 void setup() {
@@ -20,16 +21,23 @@ void setup() {
 }
 
 void loop() {
-  // read from port 1, send to port 0:
-
+  //Forward USB serial to modem and back ( manual AT commands )
   if (modem.available() and pollModem) {
-    int8_t inByte = modem.read();
+    uint8_t inByte = modem.read();
     Serial.write(inByte);
   }
-  // read from port 0, send to port 1:
   if (Serial.available()) {
-    int inByte = Serial.read();
+    uint8_t inByte = Serial.read();
     modem.write(inByte);
+  }
+
+  // Send data every 10 sec
+  if ( millis() - millisTime > 10000) {
+    if ( sendATCommand((char *)"AT+CHTTPSEND=0,0,\"/index.html?\"")) {
+      Serial.println("Modeemin httpsend ei toimi.");
+      reboot();
+    }
+    millisTime = millis();
   }
 }
 
@@ -39,23 +47,31 @@ void setupConnection() {
   pollModem = 0;
   Serial.println("Setup NB MQTT connection.");
   //sendATCommand((char *)"AT");
-  sendATCommand((char *)"ATZ");
-  sendATCommand((char *)"AT+CPIN?");
+  if (sendATCommand((char *)"ATZ")) {
+    Serial.println("Modeemin alustus ei toimi.");
+    reboot();
+  }
+  if ( sendATCommand((char *)"AT+CPIN?")) {
+    Serial.println("Modeemin SIM kortti ei toimi.");
+    reboot();
+  }
   sendATCommand((char *)"AT+CSQ");
   sendATCommand((char *)"AT+CGREG?");
   sendATCommand((char *)"AT+CGACT?");
   sendATCommand((char *)"AT+COPS?");
   sendATCommand((char *)"AT+CGCONTRDP");
   sendATCommand((char *)"AT+CHTTPCREATE=\"http://iot.fvh.fi/\"");
-  sendATCommand((char *)"AT+CHTTPCON=0");
-  sendATCommand((char *)"AT+CHTTPSEND=0,0,\"/index.html?\"");
-  sendATCommand((char *)"AT+CHTTPDISCON=0");
-  sendATCommand((char *)"AT+CHTTPDESTROY=0");
+  if (sendATCommand((char *)"AT+CHTTPCON=0")) {
+    Serial.println("Modeemin HTTPcon ei toimi.");
+    reboot();
+  }
+  //sendATCommand((char *)"AT+CHTTPDISCON=0");
+  //sendATCommand((char *)"AT+CHTTPDESTROY=0");
   pollModem = 1;
 }
 
 uint8_t sendATCommand(char *ATCommand) {
-  uint8_t aswerbytes[4]={0,0,0,0}; // Save last two chars + NL&CR to compare if ok
+  uint8_t aswerbytes[4] = {0, 0, 0, 0}; // Save last two chars + NL&CR to compare if ok
   Serial.print("Sending AT command: ");
   //Send data to modem
   modem.print(ATCommand);
@@ -68,15 +84,20 @@ uint8_t sendATCommand(char *ATCommand) {
   while (modem.available()) {
     uint8_t inByte = modem.read();
     Serial.write(inByte);
-    aswerbytes[0]=aswerbytes[1];
-    aswerbytes[1]=aswerbytes[2];
-    aswerbytes[2]=aswerbytes[3];
-    aswerbytes[3]=inByte;
+    aswerbytes[0] = aswerbytes[1];
+    aswerbytes[1] = aswerbytes[2];
+    aswerbytes[2] = aswerbytes[3];
+    aswerbytes[3] = inByte;
     delay(10);
   }
   Serial.println("Sending AT DONE.");
   Serial.println();
   Serial.flush();
-  if( aswerbytes[0]=='O' and aswerbytes[1]=='K' ) return (0); // Return 0 if ok
-  else return(1); // Returun 1 on error
+  if ( aswerbytes[0] == 'O' and aswerbytes[1] == 'K' ) return (0); // Return 0 if ok
+  else return (1); // Returun 1 on error
+}
+
+void reboot() {
+  Serial.println("Restarting...");
+  ESP.restart();
 }
