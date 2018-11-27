@@ -2,6 +2,8 @@
 
 // Connect modem  tx to ESP D7 (rx)
 //                rx to ESP D8 (tx)
+//                G to G and V to V3,3
+//                Connect modem K to modem other G with jumpper cable ( on key pressed )
 
 int8_t pollModem = 1;
 uint32 millisTime = 0;
