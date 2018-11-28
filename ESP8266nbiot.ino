@@ -3,19 +3,23 @@
 // Connect modem  tx to ESP D7 (rx)
 //                rx to ESP D8 (tx)
 //                G to G and V to V3,3
-//                Connect modem K ESP D1 ( on key pressed )
+//                Connect modem K ESP D3 ( on key pressed )
 
 int8_t pollModem = 1;
 uint32 millisTime = 0;
 SoftwareSerial modem( D7, D8 );
 
 void setup() {
+  delay(2000); // Sanity delay
   // initialize both serial ports:
   Serial.begin(115200);
+  Serial.println("Serial.begin()");
+  delay(1000); // Sanity delay
+  Serial.println("modem.begin()");
   modem.begin(115200);
 
   pinMode(D1, OUTPUT); // Modem power key
-  Serial.println("NB-IOT MQTT test");
+  Serial.println("NB-IOT HTTP test");
   setupConnection();
 }
 
@@ -45,7 +49,7 @@ void setupConnection() {
   //char *ATCommand;
   //ATCommand="ATZ";
   pollModem = 0;
-  Serial.println("Setup NB MQTT connection.");
+  Serial.println("Setup NB HTTP connection.");
   //sendATCommand((char *)"AT");
   if (sendATCommand((char *)"ATZ")) {
     Serial.println("Modeemin alustus ei toimi.");
@@ -73,32 +77,32 @@ void setupConnection() {
 }
 
 uint8_t sendATCommand(char *ATCommand) {
-  uint8_t aswerbytes[4] = {0, 0, 0, 0}; // Save last two chars + NL&CR to compare if ok
-  int16_t timeout=10000; // If no aswer in 10 sec timeout
+  uint8_t answerbytes[4] = {0, 0, 0, 0}; // Save last two chars + NL&CR to compare if ok
+  int16_t timeout = 10000; // If no answer in 10 sec timeout
   Serial.print("Sending AT command: ");
   //Send data to modem
   modem.print(ATCommand);
   modem.print("\r\n");
-  //Wait for aswer
-  while (!modem.available()) {  
+  //Wait for answer
+  while (!modem.available()) {
     delay(50);
-    timeout=timeout-50;
-    if( timeout <= 0 ) return(2); // return 2 on timeout
+    timeout = timeout - 50;
+    if ( timeout <= 0 ) return (2); // return 2 on timeout
   }
-  // Copy aswer from modem to USB serial
+  // Copy answer from modem to USB serial
   while (modem.available()) {
     uint8_t inByte = modem.read();
     Serial.write(inByte);
-    aswerbytes[0] = aswerbytes[1];
-    aswerbytes[1] = aswerbytes[2];
-    aswerbytes[2] = aswerbytes[3];
-    aswerbytes[3] = inByte;
+    answerbytes[0] = answerbytes[1];
+    answerbytes[1] = answerbytes[2];
+    answerbytes[2] = answerbytes[3];
+    answerbytes[3] = inByte;
     delay(10);
   }
   Serial.println("Sending AT DONE.");
   Serial.println();
   Serial.flush();
-  if ( aswerbytes[0] == 'O' and aswerbytes[1] == 'K' ) return (0); // Return 0 if ok
+  if ( answerbytes[0] == 'O' and answerbytes[1] == 'K' ) return (0); // Return 0 if ok
   else return (1); // Returun 1 on error
 }
 
