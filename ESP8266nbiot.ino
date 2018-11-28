@@ -18,7 +18,7 @@ void setup() {
   Serial.println("modem.begin()");
   modem.begin(115200);
 
-  pinMode(D1, OUTPUT); // Modem power key
+  pinMode(D3, OUTPUT); // Modem power key
   Serial.println("NB-IOT HTTP test");
   setupConnection();
 }
@@ -114,9 +114,9 @@ void reboot() {
 void PowerOnModem() {
   pollModem = 0;
   Serial.println("Power on modem.");
-  digitalWrite( D1, LOW );
+  digitalWrite( D3, LOW );
   delay(500);
-  digitalWrite( D1,  HIGH );
+  digitalWrite( D3,  HIGH );
   delay(500);
   pollModem = 1;
 }
